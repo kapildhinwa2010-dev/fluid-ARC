@@ -27,7 +27,6 @@ def power_iteration_lmax(L, iters=300, tol=1e-13, seed=0):
         if nw < 1e-300:
             return 0.0
         v = w / nw
-        del lam_new
     return lam
 
 
