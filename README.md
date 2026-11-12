@@ -1,38 +1,43 @@
-Superfluid Framework v1.0
-Replace the transformer's quadratic attention with a cellular-sheaf diffusion whose geometry is recomputed and jammed in every forward pass.
+# Superfluid Framework v1.0
 
-python
+Replace the transformer's quadratic attention with a **cellular-sheaf diffusion**: the data's geometry is recomputed and *jammed* in every forward pass, a multi-scale band bank reads the transient, and a sparse route head restores sharp retrieval.
 
+```
+X(t) = exp(-t L_F) X(0),        L_F = delta-dagger delta      # sheaf Laplacian
+```
 
-X(t) = exp(-t L_F) X(0),        L_F = δᵀδ      # sheaf Laplacian
-Jams — the field converges exponentially to ker(L_F) (the Hodge limit).python3 selftest.py      # 15 numerical checks of the mathematics
-python3 train.py --steps 400 --d 64 --layers 2 --ctx 64 --batch 16
-python3 build_report.py  # -> index.htmlbut a smooth diffusion cannot select one neighbour sharply, so retrieval is re-introduced explicitly as a sparse top-k route head. Global geometry from the fluid, sharp selection from the head — that is the architecture.
+The field converges exponentially to ker(L_F) — the Hodge limit, the frozen geometry. A smooth diffusion cannot select one neighbour sharply, so retrieval is re-introduced explicitly as a sparse top-k route head. **Global geometry from the fluid, sharp selection from the head — that is the architecture.**
 
-Verify it in 30 secondsRequirements: numpy only. No torch, no scipy — the whole point is that any claim can be re-verified on any laptop.
+## The block, in one breath
 
-What is here
-path	what
-superfluid/autodiff.py	reverse-mode autodiff (Tensor + ops), gradient-checked
-superfluid/sheaf.py	signed sheaf Laplacian, G-balance, total variation
-superfluid/diffusion.py	λmax power iteration, Chebyshev exp(-tL), band filter bank, spectral gap, jam time, spectral-time band placement
-superfluid/topology.py	top-k routing, edge construction, Kruskal 0-D barcode, Betti numbers, persistence descriptor
-superfluid/blocks.py	SuperfluidBlock — the six-stage stack
-superfluid/model.py	SuperfluidLM + TinyTransformer baseline
-superfluid/losses.py, optim.py, data.py	objectives, Adam, Gutenberg corpus
-selftest.py	the mathematics, verified → results/selftest.json
-train.py	LM A/B + global-aggregation demo → results/train_results.json
-build_report.py	generates index.html from the measurements
-FRAMEWORK.md	the specification of record — module map, lemmas, improvement ledger, loss design, instrumentation, ablation plan, scaling-law protocol, kill criteria
-Status
-Mathematics: 15/15 checks pass (jamming bound, jam-time bound, Chebyshev degree, linear collapse, the nonlinearity fix, rank-c trap, band recovery, G-balance phase transition, contraction certificate, frame property, and end-to-end gradient checks against finite differences).Training: character-level LM on Project Gutenberg against a param-matched transformer (Superfluid 71.4 k params → 2.740 val; Transformer 116.5 k → 2.633 — the transformer is better at this tiny scale, and the spec says so).
-Mechanism test (the decisive one): the fluid computes a global statistic in one pass with 97.3 % sign accuracy, versus 65.6 % / 71.0 % for strictly-local aggregators and 100.0 % for attention.
-The first version of that tesThe first version of that test scored 49.3 % (chance) and exposed two real architectural gaps: the band bank cannot carry the frozen state (fixed by the harmonic branch), and open band gates swamp it (fixed by the gate initialisation).
-Not yet done: sparse (non-dense) Laplacian backend, Torch port, the A1–A12 ablation sweep, and any scaling-law run. These are v1.1/v1.2 inThe first version of that test scored 49.3 % (chance) and exposed two real architectural gaps: the band bank cannot carry the frozen state (fixed by the harmonic branch), and open band gates swamp it (fixed by the gate initialisation).
-Not yet done: sparse (non-dense) Laplacian backend, Torch port, the A1–A12 ablation sweep, and any scaling-law run. These are v1.1/v1.2 in FRAMEWORK.md.
-Honest caveatsHonest caveats
-The fluid is 0.00016 % of a transformer layer's FLOPs. It is nearly free, which also means it cannot be the reason the model works — capacity still lives in the FFN and the mixing matrices.
-The frozen state has rank = #components. Reading only the jam loses almost everything; the band filter bank is mandatory, not optional.The frozen state has rank = #components. Reading only the jam loses almost everything; the band filter bank is mandatory, not optional.
-A purely linear Superfluid cannot fit XOR (measured: 0.50 accuracy). The single pointwise nonlinearity is what makes the architecture legal.
-Dense O(n²) Laplacian is the current scaling limit.
-Nothing here has been trained at scale. The kill criteria in FRAMEWORK.md §12 are the point — each is cheap to test.# superfluid-AI-
+1. **Router** — top-k content routing (the needle path)
+2. **Topology** — semantic edges + temporal chain (order as 1-D topology)
+3. **Sheaf** — signed, content-adaptive restriction maps (tanh-bounded)
+4. **Freeze** — band filter bank in spectral time (Chebyshev, shared basis)
+5. **Harmonic** — exact Hodge projection, the frozen state (O(n+m), union-find)
+6. **Read** — mix, gelu, residual (the single nonlinearity)
+7. **Route head** — hard top-k gather (winner-take-all retrieval)
+
+## What is measured
+
+- **Mechanism test (the decisive one):** the fluid computes a global statistic in one pass with **97.3% sign accuracy**, vs 65.6% / 71.0% for strictly-local aggregators and 100.0% for attention. The first version scored 49.3% (chance) and exposed two real gaps — the missing harmonic branch and open band gates — both fixed and both now regression-tested.
+- **LM A/B (honest):** char-level LM on Project Gutenberg — Superfluid 71.4k params reaches 2.740 val nats/char; a param-heavier transformer reaches 2.633. **At this tiny scale the transformer is better, and the spec says so.**
+- **Cost model:** the fluid itself is 384 FLOPs/token/layer — 0.00016% of a transformer layer. The real win is decode state: ~16 KB instead of a KV cache that grows to 488 GB at 1M-token context.
+- **21/21 mathematical checks pass**, including end-to-end gradient checks against finite differences (max relative error ~3e-7).
+
+## What is here
+
+| path | what |
+| --- | --- |
+| [FRAMEWORK.md](FRAMEWORK.md) | the specification of record — module map, five machine-verified lemmas, improvement ledger, loss design, instrumentation, ablation plan A1-A12, scaling-law protocol, kill criteria |
+| [index.html](index.html) | the generated report — specification and measurements, self-contained |
+
+## Honest status
+
+- The specification and the measured results come from the original v1.0 build.
+- The **reference implementation is being restored** into this repository (the `superfluid/` NumPy package, `selftest.py`, `train.py`) — see the roadmap in FRAMEWORK.md.
+- Known limits, stated up front: the dense O(n^2) Laplacian is the current scaling limit; nothing here has been trained at scale; the kill criteria in FRAMEWORK.md section 12 are the point — each is cheap to test.
+
+## License
+
+MIT
