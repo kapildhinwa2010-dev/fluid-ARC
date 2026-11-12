@@ -40,8 +40,10 @@ The field converges exponentially to ker(L_F) - the Hodge limit, the frozen geom
 - [x] `sheaf.py` - signed sheaf Laplacian (PSD by construction), G-balance residual, TV energy; differentiable scatter path gradient-checked
 - [x] `diffusion.py` - Gershgorin lambda-max, Chebyshev exp(-tL) (eigen-verified), shared-basis band bank, spectral gap, jam-time bound
 - [x] `topology.py` - top-k edge construction, Kruskal 0-D barcode, Betti numbers, persistence descriptor, O(n+m) Hodge projection
-- [ ] `blocks.py`, `model.py`, `losses.py`, `optim.py`, `data.py`
-- [ ] `selftest.py` - the 21 numerical checks
+- [x] `blocks.py` - the six-stage SuperfluidBlock: router, topology, sheaf, Chebyshev freeze, harmonic, read
+- [x] `model.py` - SuperfluidLM with top-k route head + TinyTransformer baseline + training loop
+- [x] `losses.py`, `optim.py`, `data.py` - cross-entropy/MSE/L2, bias-corrected Adam, deterministic char corpus
+- [x] `selftest.py` - the 21 numerical checks, all passing in CI
 
 Every restored module lands with its own regression tests, and CI publishes the test log after every run.
 

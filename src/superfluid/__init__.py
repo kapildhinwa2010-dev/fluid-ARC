@@ -13,4 +13,8 @@ from .data import batch, char_dataset, synthetic_corpus
 from .losses import cross_entropy, l2_penalty, mse
 from .optim import Adam
 
+from .blocks import SuperfluidBlock, rmsnorm
+from .model import SuperfluidLM, TinyTransformer, train_steps
+from .selftest import CHECKS, run_all
+
 __version__ = "0.1.0"
