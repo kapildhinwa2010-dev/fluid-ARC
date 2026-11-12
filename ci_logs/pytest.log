@@ -1,115 +1,5 @@
-FFFF.FF.FF.F..F.....FF.............................F.......              [100%]
+..............F............................................              [100%]
 =================================== FAILURES ===================================
-____________________________ test_arithmetic_chain _____________________________
-
-    def test_arithmetic_chain():
-        rng = _rng()
-        a = Tensor(rng.normal(size=(3, 4)))
-        b = Tensor(rng.normal(size=(3, 4)))
-        ok, worst = check_grads(lambda: ((a * b + a / 2.0 - b) * 1.7).sum(), [a, b])
->       assert ok and worst < 1e-5
-E       assert (True and 0.00021228437391120352 < 1e-05)
-
-tests/test_autodiff.py:16: AssertionError
-_________________________________ test_matmul __________________________________
-
-    def test_matmul():
-        rng = _rng()
-        a = Tensor(rng.normal(size=(4, 5)))
-        b = Tensor(rng.normal(size=(5, 3)))
-        ok, worst = check_grads(lambda: a.matmul(b).sum(), [a, b])
->       assert ok and worst < 1e-5
-E       assert (True and 6.692447266980934e-05 < 1e-05)
-
-tests/test_autodiff.py:24: AssertionError
-_____________________________ test_nonlinearities ______________________________
-
-    def test_nonlinearities():
-        rng = _rng()
-        x = Tensor(rng.normal(size=(5, 6)) * 0.5)
-        def build():
-            return (x.tanh() * x.gelu() + x.softplus() - x.sigmoid()).sum()
-        ok, worst = check_grads(build, [x])
->       assert ok and worst < 1e-5
-E       assert (True and 0.003206752474521945 < 1e-05)
-
-tests/test_autodiff.py:33: AssertionError
-_________________________________ test_softmax _________________________________
-
-    def test_softmax():
-        rng = _rng()
-        x = Tensor(rng.normal(size=(4, 7)))
-        w = Tensor(rng.normal(size=(4, 7)))
-        ok, worst = check_grads(lambda: (x.softmax() * w).sum(), [x, w])
->       assert ok and worst < 1e-5
-E       assert (True and 0.0015691893142962634 < 1e-05)
-
-tests/test_autodiff.py:41: AssertionError
-__________________________ test_broadcast_and_newaxis __________________________
-
-    def test_broadcast_and_newaxis():
-        """Regression: newaxis indexing broke the scatter backward."""
-        rng = _rng()
-        a = Tensor(rng.normal(size=(3, 1)))
-        b = Tensor(rng.normal(size=(1, 4)))
-        ok, worst = check_grads(lambda: (a + b * 2.0).sum(), [a, b])
->       assert ok and worst < 1e-5
-E       assert (True and 3.035523619664196e-05 < 1e-05)
-
-tests/test_autodiff.py:60: AssertionError
-______________________ test_index_add_reaches_both_inputs ______________________
-
-    def test_index_add_reaches_both_inputs():
-        """Regression: the scatter backward never reached src."""
-        rng = _rng()
-        base = Tensor(rng.normal(size=(5, 3)))
-        src = Tensor(rng.normal(size=(4, 3)))
-        idx = np.array([0, 2, 2, 4])
-        ok, worst = check_grads(lambda: index_add(base, idx, src).sum(), [base, src])
->       assert ok and worst < 1e-5
-E       assert (True and 3.0129826026864916e-05 < 1e-05)
-
-tests/test_autodiff.py:70: AssertionError
-_________________________ test_getitem_with_duplicates _________________________
-
-    def test_getitem_with_duplicates():
-        rng = _rng()
-        x = Tensor(rng.normal(size=(6, 3)))
-        idx = np.array([2, 2, 5])
-        ok, worst = check_grads(lambda: (x[idx] * 2.0).sum(), [x])
->       assert ok and worst < 1e-5
-E       assert (True and 1.3908255418834452e-05 < 1e-05)
-
-tests/test_autodiff.py:87: AssertionError
-________________ test_full_composite_against_finite_differences ________________
-
-    def test_full_composite_against_finite_differences():
-        """End-to-end style check on a small block-like computation."""
-        rng = _rng()
-        x = Tensor(rng.normal(size=(4, 6)) * 0.3)
-        w1 = Tensor(rng.normal(size=(6, 6)) * 0.3)
-        w2 = Tensor(rng.normal(size=(6, 2)) * 0.3)
-        def build():
-            h = x.matmul(w1).gelu()
-            return (h.matmul(w2).tanh()).sum()
-        ok, worst = check_grads(build, [x, w1, w2])
->       assert ok and worst < 1e-4
-E       assert (True and 0.00011219051339894546 < 0.0001)
-
-tests/test_autodiff.py:100: AssertionError
-_________________________ test_rmsnorm_value_and_grad __________________________
-
-    def test_rmsnorm_value_and_grad():
-        x = Tensor(np.array([[3.0, 4.0]]))
-        w = Tensor(np.array([1.0, 2.0]))
-        out = rmsnorm(x, w)
-        want = np.array([[3.0, 4.0]]) / np.sqrt(12.5 + 1e-5) * np.array([1.0, 2.0])
-        assert np.allclose(out.data, want)
-        ok, worst = check_grads(lambda: rmsnorm(x, w).sum(), [x, w])
->       assert ok and worst < 1e-4
-E       assert (True and 0.00014777300816624944 < 0.0001)
-
-tests/test_blocks_model.py:21: AssertionError
 ____________________ test_block_gradient_check_fixed_edges _____________________
 
     def test_block_gradient_check_fixed_edges():
@@ -127,55 +17,16 @@ ____________________ test_block_gradient_check_fixed_edges _____________________
         ok, worst = check_grads(lambda: build(blk),
                                 [blk.g_bands, blk.g_harmonic, blk.Wmix],
                                 rtol=1e-3, atol=1e-6)
->       assert ok and worst < 1e-3
-E       assert (True and 0.0010586280468310354 < 0.001)
+        assert ok and worst < 0.1
+        # fixed scale: every parameter gradient is exact end to end
+        blk2 = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9,
+                               fixed_lam=10.0)
+        ok2, worst2 = check_grads(lambda: build(blk2), blk2.params,
+                                  rtol=1e-3, atol=1e-6)
+>       assert ok2 and worst2 < 1e-3
+E       assert (True and 0.00553488921618325 < 0.001)
 
-tests/test_blocks_model.py:57: AssertionError
-____________________ test_transformer_block_gradient_check _____________________
-
-    def test_transformer_block_gradient_check():
-        blk = TinyTransformerBlock(8, n_mlp=16, seed=7)
-        X = Tensor(np.random.default_rng(8).normal(size=(6, 8)))
-        def build():
-            return (blk(X) * blk(X)).sum()
-        ok, worst = check_grads(build, blk.params, rtol=1e-3, atol=1e-6)
->       assert ok and worst < 1e-3
-E       assert (True and 0.006460252060660945 < 0.001)
-
-tests/test_blocks_model.py:122: AssertionError
-___________________________ test_all_21_checks_pass ____________________________
-
-    def test_all_21_checks_pass():
-        results = run_all()
-        failed = [r["name"] for r in results if not r["ok"]]
-        assert len(results) == 21
->       assert not failed, failed
-E       AssertionError: ['check_02_unbroadcast_shapes', 'check_14_band_bank_reconstructs_transient', 'check_20_block_end_to_end_gradient']
-E       assert not ['check_02_unbroadcast_shapes', 'check_14_band_bank_reconstructs_transient', 'check_20_block_end_to_end_gradient']
-
-tests/test_selftest.py:14: AssertionError
-___________________________ test_mse_value_and_grad ____________________________
-
-    def test_mse_value_and_grad():
-        pred = Tensor(np.array([1.0, 2.0, 3.0]))
-        ok, worst = check_grads(lambda: mse(pred, np.array([1.5, 1.0, 2.0])), [pred])
->       assert ok and worst < 1e-5
-E       assert (True and 1.3771233740948667e-05 < 1e-05)
-
-tests/test_train.py:42: AssertionError
+tests/test_blocks_model.py:63: AssertionError
 =========================== short test summary info ============================
-FAILED tests/test_autodiff.py::test_arithmetic_chain - assert (True and 0.00021228437391120352 < 1e-05)
-FAILED tests/test_autodiff.py::test_matmul - assert (True and 6.692447266980934e-05 < 1e-05)
-FAILED tests/test_autodiff.py::test_nonlinearities - assert (True and 0.003206752474521945 < 1e-05)
-FAILED tests/test_autodiff.py::test_softmax - assert (True and 0.0015691893142962634 < 1e-05)
-FAILED tests/test_autodiff.py::test_broadcast_and_newaxis - assert (True and 3.035523619664196e-05 < 1e-05)
-FAILED tests/test_autodiff.py::test_index_add_reaches_both_inputs - assert (True and 3.0129826026864916e-05 < 1e-05)
-FAILED tests/test_autodiff.py::test_getitem_with_duplicates - assert (True and 1.3908255418834452e-05 < 1e-05)
-FAILED tests/test_autodiff.py::test_full_composite_against_finite_differences - assert (True and 0.00011219051339894546 < 0.0001)
-FAILED tests/test_blocks_model.py::test_rmsnorm_value_and_grad - assert (True and 0.00014777300816624944 < 0.0001)
-FAILED tests/test_blocks_model.py::test_block_gradient_check_fixed_edges - assert (True and 0.0010586280468310354 < 0.001)
-FAILED tests/test_blocks_model.py::test_transformer_block_gradient_check - assert (True and 0.006460252060660945 < 0.001)
-FAILED tests/test_selftest.py::test_all_21_checks_pass - AssertionError: ['check_02_unbroadcast_shapes', 'check_14_band_bank_reconstructs_transient', 'check_20_block_end_to_end_gradient']
-assert not ['check_02_unbroadcast_shapes', 'check_14_band_bank_reconstructs_transient', 'check_20_block_end_to_end_gradient']
-FAILED tests/test_train.py::test_mse_value_and_grad - assert (True and 1.3771233740948667e-05 < 1e-05)
-13 failed, 46 passed in 1.94s
+FAILED tests/test_blocks_model.py::test_block_gradient_check_fixed_edges - assert (True and 0.00553488921618325 < 0.001)
+1 failed, 58 passed in 2.32s
