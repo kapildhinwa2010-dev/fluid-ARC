@@ -5,7 +5,10 @@ signed tanh-bounded restriction maps -> sheaf Laplacian -> shared-
 basis Chebyshev band bank in spectral time -> gated sum with the
 harmonic branch -> gelu mixing -> residual. The Gershgorin scale
 that sets the spectral time grid is detached: gradients flow
-through the scaled operator, the band gates, and the mixer."""
+through the scaled operator, the band gates, and the mixer. With
+fixed_lam set, the scale is a true constant and every parameter
+gradient is exact end to end (that mode is what the finite-difference
+checks exercise)."""
 
 import numpy as np
 
@@ -23,7 +26,7 @@ def rmsnorm(x, weight, eps=1e-5):
 
 class SuperfluidBlock:
     def __init__(self, d_model, topk=4, n_bands=6, chain_beta=1.0,
-                 a_lo=0.05, a_hi=20.0, degree=24, seed=0):
+                 a_lo=0.05, a_hi=20.0, degree=24, seed=0, fixed_lam=None):
         rng = np.random.default_rng(seed)
         self.d = int(d_model)
         self.topk = int(topk)
@@ -32,6 +35,7 @@ class SuperfluidBlock:
         self.a_lo = float(a_lo)
         self.a_hi = float(a_hi)
         self.degree = int(degree)
+        self.fixed_lam = fixed_lam
         self.Wq = Tensor(rng.normal(0.0, 0.02, (d_model, d_model)))
         self.Wk = Tensor(rng.normal(0.0, 0.02, (d_model, d_model)))
         self.g_bands = Tensor(np.full(n_bands, -3.0))
@@ -71,7 +75,7 @@ class SuperfluidBlock:
         """Stages 4-6: freeze, harmonic, read. Returns (out, aux)."""
         n = X.shape[0]
         Xr, scores, L, edges = self.fluid(X, sem_edges)
-        lam = max(gershgorin_bound(L.data), 1e-12)
+        lam = self.fixed_lam if self.fixed_lam else max(gershgorin_bound(L.data), 1e-12)
         ts = 2.0 * np.geomspace(self.a_lo, self.a_hi, self.n_bands + 1) / lam
         Lsc = L * (2.0 / lam) - Tensor(np.eye(n))
         Y = [Xr]

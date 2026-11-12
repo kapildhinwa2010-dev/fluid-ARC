@@ -49,7 +49,7 @@ def check_03_index_add_reaches_src():
 
 def check_04_gradient_vs_finite_differences():
     W = Tensor(np.random.default_rng(40).normal(size=(4, 4)))
-    x = Tensor(np.random.default_rng(41).normal(size=(4, 3)))
+    x = Tensor(np.random.default_rng(41).normal(size=(4, 4)))
     def build():
         return (W.matmul(x).tanh().matmul(W.T)).sum()
     ok, worst = check_grads(build, [W, x], rtol=1e-4, atol=1e-8)
@@ -221,13 +221,15 @@ def check_19_band_frame_energy_bound():
 
 
 def check_20_block_end_to_end_gradient():
-    blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=25)
     X = Tensor(np.random.default_rng(26).normal(size=(8, 8)))
     edges = [(2, 5), (1, 6), (3, 7)]
-    def build():
+    def build(blk):
         out, _ = blk(X, sem_edges=edges)
         return (out * out).sum()
-    ok, worst = check_grads(build, blk.params, rtol=1e-3, atol=1e-6)
+    blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=25,
+                          fixed_lam=10.0)
+    ok, worst = check_grads(lambda: build(blk), blk.params,
+                            rtol=1e-3, atol=1e-6)
     return bool(ok and worst < 1e-3)
 
 

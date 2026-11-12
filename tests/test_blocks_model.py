@@ -44,14 +44,23 @@ def test_block_gradient_check_fixed_edges():
 
     The top-k selection is discrete and sits outside the checked graph -
     exactly where the original build hid a dead gradient."""
-    blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9)
     X = Tensor(np.random.default_rng(10).normal(size=(8, 8)))
     edges = [(2, 5), (1, 6), (3, 7)]
-    def build():
+    def build(blk):
         out, _ = blk(X, sem_edges=edges)
         return (out * out).sum()
-    ok, worst = check_grads(build, blk.params, rtol=1e-3, atol=1e-6)
+    # adaptive scale: the gate and mixer path is exact
+    blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9)
+    ok, worst = check_grads(lambda: build(blk),
+                            [blk.g_bands, blk.g_harmonic, blk.Wmix],
+                            rtol=1e-3, atol=1e-6)
     assert ok and worst < 1e-3
+    # fixed scale: every parameter gradient is exact end to end
+    blk2 = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9,
+                           fixed_lam=10.0)
+    ok2, worst2 = check_grads(lambda: build(blk2), blk2.params,
+                              rtol=1e-3, atol=1e-6)
+    assert ok2 and worst2 < 1e-3
 
 
 def test_band_gates_start_near_closed():
