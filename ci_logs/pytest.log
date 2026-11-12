@@ -7,17 +7,26 @@ ____________________ test_block_gradient_check_fixed_edges _____________________
     
         The top-k selection is discrete and sits outside the checked graph -
         exactly where the original build hid a dead gradient."""
-        blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9)
         X = Tensor(np.random.default_rng(10).normal(size=(8, 8)))
         edges = [(2, 5), (1, 6), (3, 7)]
-        def build():
+        def build(blk):
             out, _ = blk(X, sem_edges=edges)
             return (out * out).sum()
-        ok, worst = check_grads(build, blk.params, rtol=1e-3, atol=1e-6)
->       assert ok and worst < 1e-3
-E       assert (False)
+        # adaptive scale: the gate and mixer path is exact
+        blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9)
+        ok, worst = check_grads(lambda: build(blk),
+                                [blk.g_bands, blk.g_harmonic, blk.Wmix],
+                                rtol=1e-3, atol=1e-6)
+        assert ok and worst < 1e-3
+        # fixed scale: every parameter gradient is exact end to end
+        blk2 = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9,
+                               fixed_lam=10.0)
+        ok2, worst2 = check_grads(lambda: build(blk2), blk2.params,
+                                  rtol=1e-3, atol=1e-6)
+>       assert ok2 and worst2 < 1e-3
+E       assert (True and 0.011078696012536634 < 0.001)
 
-tests/test_blocks_model.py:54: AssertionError
+tests/test_blocks_model.py:63: AssertionError
 ___________________________ test_all_21_checks_pass ____________________________
 
     def test_all_21_checks_pass():
@@ -26,33 +35,20 @@ ___________________________ test_all_21_checks_pass ____________________________
 
 tests/test_selftest.py:11: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-src/superfluid/selftest.py:274: in run_all
+src/superfluid/selftest.py:276: in run_all
     results.append({"name": fn.__name__, "ok": bool(fn())})
                                                     ^^^^
-src/superfluid/selftest.py:55: in check_04_gradient_vs_finite_differences
-    ok, worst = check_grads(build, [W, x], rtol=1e-4, atol=1e-8)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-src/superfluid/autodiff.py:321: in check_grads
-    out = build()
-          ^^^^^^^
-src/superfluid/selftest.py:54: in build
-    return (W.matmul(x).tanh().matmul(W.T)).sum()
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <superfluid.autodiff.Tensor object at 0x777cdbd4bd90>
-other = <superfluid.autodiff.Tensor object at 0x777cdbd4a050>
+    def check_11_restriction_maps_stay_bounded():
+        rng = np.random.default_rng(15)
+        scores = rng.normal(size=(8, 8)) * 50.0
+>       edges = topk_edges(scores, 3)
+                ^^^^^^^^^^
+E       NameError: name 'topk_edges' is not defined
 
-    def matmul(self, other):
-        other = other if isinstance(other, Tensor) else Tensor(other)
-        a, b = self.data, other.data
-        if a.ndim == 2 and b.ndim == 2:
->           out = Tensor(a @ b, (self, other))
-                         ^^^^^
-E           ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 4 is different from 3)
-
-src/superfluid/autodiff.py:133: ValueError
+src/superfluid/selftest.py:125: NameError
 =========================== short test summary info ============================
-FAILED tests/test_blocks_model.py::test_block_gradient_check_fixed_edges - assert (False)
-FAILED tests/test_selftest.py::test_all_21_checks_pass - ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 4 is different from 3)
-2 failed, 57 passed in 2.18s
+FAILED tests/test_blocks_model.py::test_block_gradient_check_fixed_edges - assert (True and 0.011078696012536634 < 0.001)
+FAILED tests/test_selftest.py::test_all_21_checks_pass - NameError: name 'topk_edges' is not defined
+2 failed, 57 passed in 1.76s
