@@ -39,7 +39,7 @@ The field converges exponentially to ker(L_F) - the Hodge limit, the frozen geom
 - [x] `autodiff.py` - reverse-mode engine; every op accumulates, broadcasting and newaxis handled, gradient-checked against finite differences
 - [x] `sheaf.py` - signed sheaf Laplacian (PSD by construction), G-balance residual, TV energy; differentiable scatter path gradient-checked
 - [x] `diffusion.py` - Gershgorin lambda-max, Chebyshev exp(-tL) (eigen-verified), shared-basis band bank, spectral gap, jam-time bound
-- [ ] `topology.py` - top-k routing, Kruskal 0-D barcode, Betti numbers, persistence descriptor
+- [x] `topology.py` - top-k edge construction, Kruskal 0-D barcode, Betti numbers, persistence descriptor, O(n+m) Hodge projection
 - [ ] `blocks.py`, `model.py`, `losses.py`, `optim.py`, `data.py`
 - [ ] `selftest.py` - the 21 numerical checks
 
