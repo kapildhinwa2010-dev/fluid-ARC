@@ -9,4 +9,8 @@ from .topology import (UnionFind, betti_numbers, component_ids, edge_mask,
                        harmonic_projection, kruskal_barcode,
                        persistence_descriptor, topk_edges)
 
+from .data import batch, char_dataset, synthetic_corpus
+from .losses import cross_entropy, l2_penalty, mse
+from .optim import Adam
+
 __version__ = "0.1.0"

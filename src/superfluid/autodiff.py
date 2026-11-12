@@ -216,6 +216,24 @@ class Tensor:
         out._backward = _bw
         return out
 
+    def sqrt(self):
+        """sqrt with a guarded derivative at 0."""
+        out = Tensor(np.sqrt(np.maximum(self.data, 0.0)), (self,))
+        def _bw():
+            self._accumulate(out.grad * 0.5 / np.maximum(out.data, 1e-12))
+        out._backward = _bw
+        return out
+
+    def max(self):
+        """Full-array max; ties share the gradient."""
+        out = Tensor(self.data.max(), (self,))
+        def _bw():
+            g = np.zeros_like(self.data)
+            g[self.data == out.data] = out.grad
+            self._accumulate(g)
+        out._backward = _bw
+        return out
+
     def softmax(self):
         """Row-wise softmax over the last axis."""
         x = self.data
@@ -254,6 +272,21 @@ def index_add(base, idx, src):
     def _bw():
         base._accumulate(out.grad)
         src._accumulate(out.grad[idx])
+    out._backward = _bw
+    return out
+
+
+def concat(tensors, axis=0):
+    """np.concatenate with gradients routed back to each part."""
+    tensors = list(tensors)
+    out = Tensor(np.concatenate([t.data for t in tensors], axis=axis), tuple(tensors))
+    def _bw():
+        off = 0
+        for t in tensors:
+            sl = [slice(None)] * out.data.ndim
+            sl[axis] = slice(off, off + t.data.shape[axis])
+            t._accumulate(out.grad[tuple(sl)])
+            off += t.data.shape[axis]
     out._backward = _bw
     return out
 
