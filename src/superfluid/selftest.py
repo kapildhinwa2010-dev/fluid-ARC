@@ -13,7 +13,7 @@ from .diffusion import (band_filter_bank, chebyshev_basis, expm_multiply,
 from .losses import cross_entropy
 from .model import SuperfluidLM
 from .sheaf import balance_residual, laplacian_from_edges
-from .topology import harmonic_projection
+from .topology import harmonic_projection, topk_edges
 
 
 def _lap(n, seed, signed=True):

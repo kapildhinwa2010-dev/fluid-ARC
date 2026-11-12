@@ -315,7 +315,13 @@ def numerical_grad(build, tensors, eps=1e-6):
 
 
 def check_grads(build, tensors, rtol=1e-5, atol=1e-7):
-    """Compare analytic gradients against finite differences."""
+    """Compare analytic gradients against finite differences.
+
+    worst is the largest fraction of the combined tolerance
+    atol + rtol * |grad| that any entry consumes, so worst < 1.0
+    exactly when allclose passes; callers assert a safety margin
+    (worst well below 1.0) instead of a raw relative error that
+    near-zero entries blow up with round-off noise."""
     for t in tensors:
         t.grad = np.zeros_like(t.data)
     out = build()
@@ -323,8 +329,8 @@ def check_grads(build, tensors, rtol=1e-5, atol=1e-7):
     num = numerical_grad(build, tensors)
     worst = 0.0
     for t, g in zip(tensors, num):
-        denom = np.maximum(np.abs(t.grad), np.abs(g))
-        rel = np.abs(t.grad - g) / np.maximum(denom, 1e-8)
+        denom = atol + rtol * np.maximum(np.abs(t.grad), np.abs(g))
+        rel = np.abs(t.grad - g) / np.maximum(denom, 1e-12)
         worst = max(worst, float(np.max(rel)))
         if not np.allclose(t.grad, g, rtol=rtol, atol=atol):
             return False, worst
