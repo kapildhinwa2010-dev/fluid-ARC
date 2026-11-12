@@ -91,8 +91,8 @@ class SuperfluidBlock:
             z = zb if z is None else z + zb
         cid, C = component_ids(n, edges)
         counts = np.bincount(cid, minlength=C).astype(float)
-        sums = index_add(Tensor(np.zeros(C)), cid, Xr)
-        h = sums[cid] * (1.0 / counts[cid])
+        sums = index_add(Tensor(np.zeros((C, Xr.shape[1]))), cid, Xr)
+        h = sums[cid] * (1.0 / counts[cid]).reshape(-1, 1)
         z = z + self.g_harmonic.softplus() * h
         out = X + z.matmul(self.Wmix).gelu()
         aux = {"edges": edges, "lam": lam, "scores": scores, "ts": ts}
