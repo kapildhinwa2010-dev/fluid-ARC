@@ -197,6 +197,13 @@ class Tensor:
         out._backward = _bw
         return out
 
+    def abs(self):
+        out = Tensor(np.abs(self.data), (self,))
+        def _bw():
+            self._accumulate(out.grad * np.sign(self.data))
+        out._backward = _bw
+        return out
+
     def softmax(self):
         """Row-wise softmax over the last axis."""
         x = self.data

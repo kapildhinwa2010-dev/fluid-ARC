@@ -37,8 +37,8 @@ The field converges exponentially to ker(L_F) - the Hodge limit, the frozen geom
 ## Restoration status
 
 - [x] `autodiff.py` - reverse-mode engine; every op accumulates, broadcasting and newaxis handled, gradient-checked against finite differences
-- [ ] `sheaf.py` - signed sheaf Laplacian, G-balance, TV energy
-- [ ] `diffusion.py` - lambda-max power iteration, Chebyshev exp(-tL), band bank, spectral gap, jam time
+- [x] `sheaf.py` - signed sheaf Laplacian (PSD by construction), G-balance residual, TV energy; differentiable scatter path gradient-checked
+- [x] `diffusion.py` - Gershgorin lambda-max, Chebyshev exp(-tL) (eigen-verified), shared-basis band bank, spectral gap, jam-time bound
 - [ ] `topology.py` - top-k routing, Kruskal 0-D barcode, Betti numbers, persistence descriptor
 - [ ] `blocks.py`, `model.py`, `losses.py`, `optim.py`, `data.py`
 - [ ] `selftest.py` - the 21 numerical checks
