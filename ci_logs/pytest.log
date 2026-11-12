@@ -1,2 +1,235 @@
-..............................................                           [100%]
-46 passed in 0.23s
+............FFF.FFF.....................................                 [100%]
+=================================== FAILURES ===================================
+___________________ test_block_forward_shape_and_finiteness ____________________
+
+    def test_block_forward_shape_and_finiteness():
+        blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=1)
+        X = Tensor(np.random.default_rng(2).normal(size=(8, 8)))
+>       out, aux = blk(X)
+                   ^^^^^^
+
+tests/test_blocks_model.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f7689052690>
+idx = array([0, 0, 0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f7689007990>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+_____________________ test_block_edges_connected_via_chain _____________________
+
+    def test_block_edges_connected_via_chain():
+        """The temporal chain alone connects the ring: spectral gap > 0."""
+        blk = SuperfluidBlock(6, topk=1, n_bands=2, degree=8, seed=3)
+        X = Tensor(np.random.default_rng(4).normal(size=(6, 6)))
+>       _, aux = blk(X)
+                 ^^^^^^
+
+tests/test_blocks_model.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f7689141090>
+idx = array([0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f76890427d0>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+____________________ test_block_gradient_check_fixed_edges _____________________
+
+    def test_block_gradient_check_fixed_edges():
+        """With the edge set fixed, every parameter gradient is exact.
+    
+        The top-k selection is discrete and sits outside the checked graph -
+        exactly where the original build hid a dead gradient."""
+        blk = SuperfluidBlock(8, topk=2, n_bands=3, degree=12, seed=9)
+        X = Tensor(np.random.default_rng(10).normal(size=(8, 8)))
+        edges = [(2, 5), (1, 6), (3, 7)]
+        def build():
+            out, _ = blk(X, sem_edges=edges)
+            return (out * out).sum()
+>       ok, worst = check_grads(build, blk.params, rtol=1e-3, atol=1e-6)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_blocks_model.py:53: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/autodiff.py:321: in check_grads
+    out = build()
+          ^^^^^^^
+tests/test_blocks_model.py:51: in build
+    out, _ = blk(X, sem_edges=edges)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f76891dc090>
+idx = array([0, 0, 0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f769142d850>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+______________________ test_superfluid_lm_forward_shapes _______________________
+
+    def test_superfluid_lm_forward_shapes():
+        corpus = synthetic_corpus(seed=1)
+        ds = char_dataset(corpus, seq_len=16)
+        model = SuperfluidLM(len(ds["vocab"]), d_model=16, n_layers=2, seed=3)
+        tokens = ds["ids"][:16]
+>       lg = model.logits(tokens)
+             ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_blocks_model.py:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/model.py:40: in logits
+    return self._encode(tokens).matmul(self.W_out)
+           ^^^^^^^^^^^^^^^^^^^^
+src/superfluid/model.py:35: in _encode
+    X, _ = blk(X)
+           ^^^^^^
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f7689028fd0>
+idx = array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f768918bd10>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+__________________ test_superfluid_lm_grads_reach_fluid_path ___________________
+
+    def test_superfluid_lm_grads_reach_fluid_path():
+        """Regression: the fluid path once trained inert - gates and Wq
+        must both receive gradient."""
+        corpus = synthetic_corpus(seed=1)
+        ds = char_dataset(corpus, seq_len=16)
+        model = SuperfluidLM(len(ds["vocab"]), d_model=16, n_layers=1, seed=4)
+        tokens = ds["ids"][:16]
+>       loss = cross_entropy(model.logits(tokens), ds["ids"][1:17])
+                             ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_blocks_model.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/model.py:40: in logits
+    return self._encode(tokens).matmul(self.W_out)
+           ^^^^^^^^^^^^^^^^^^^^
+src/superfluid/model.py:35: in _encode
+    X, _ = blk(X)
+           ^^^^^^
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f7689018c50>
+idx = array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f7688eeda10>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+__________________________ test_superfluid_lm_learns ___________________________
+
+    def test_superfluid_lm_learns():
+        corpus = synthetic_corpus(seed=1)
+        ds = char_dataset(corpus, seq_len=16)
+        model = SuperfluidLM(len(ds["vocab"]), d_model=16, n_layers=1, seed=5)
+>       curve = train_steps(model, corpus, steps=25, lr=3e-3, seed=5)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_blocks_model.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/superfluid/model.py:118: in train_steps
+    lg = model.logits(x.reshape(-1))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/superfluid/model.py:40: in logits
+    return self._encode(tokens).matmul(self.W_out)
+           ^^^^^^^^^^^^^^^^^^^^
+src/superfluid/model.py:35: in _encode
+    X, _ = blk(X)
+           ^^^^^^
+src/superfluid/blocks.py:94: in __call__
+    sums = index_add(Tensor(np.zeros(C)), cid, Xr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+base = <superfluid.autodiff.Tensor object at 0x7f7686d36810>
+idx = array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+src = <superfluid.autodiff.Tensor object at 0x7f7688e97210>
+
+    def index_add(base, idx, src):
+        """out = base with out[idx] += src.
+    
+        Gradients reach BOTH base and src (regression: the original build
+        had a scatter whose backward never reached src, leaving the whole
+        fluid path inert)."""
+        out_data = base.data.copy()
+>       np.add.at(out_data, idx, src.data)
+E       ValueError: array is not broadcastable to correct shape
+
+src/superfluid/autodiff.py:270: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_blocks_model.py::test_block_forward_shape_and_finiteness - ValueError: array is not broadcastable to correct shape
+FAILED tests/test_blocks_model.py::test_block_edges_connected_via_chain - ValueError: array is not broadcastable to correct shape
+FAILED tests/test_blocks_model.py::test_block_gradient_check_fixed_edges - ValueError: array is not broadcastable to correct shape
+FAILED tests/test_blocks_model.py::test_superfluid_lm_forward_shapes - ValueError: array is not broadcastable to correct shape
+FAILED tests/test_blocks_model.py::test_superfluid_lm_grads_reach_fluid_path - ValueError: array is not broadcastable to correct shape
+FAILED tests/test_blocks_model.py::test_superfluid_lm_learns - ValueError: array is not broadcastable to correct shape
+6 failed, 50 passed in 0.67s
