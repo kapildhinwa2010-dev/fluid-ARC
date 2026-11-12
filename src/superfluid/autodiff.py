@@ -128,12 +128,24 @@ class Tensor:
     # ---- matmul and shapes ------------------------------------------------
     def matmul(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        if self.data.ndim != 2 or other.data.ndim != 2:
-            raise NotImplementedError("matmul gradients implemented for 2-D only")
-        out = Tensor(self.data @ other.data, (self, other))
-        def _bw():
-            self._accumulate(out.grad @ other.data.T)
-            other._accumulate(self.data.T @ out.grad)
+        a, b = self.data, other.data
+        if a.ndim == 2 and b.ndim == 2:
+            out = Tensor(a @ b, (self, other))
+            def _bw():
+                self._accumulate(out.grad @ b.T)
+                other._accumulate(a.T @ out.grad)
+        elif a.ndim == 2 and b.ndim == 1:
+            out = Tensor(a @ b, (self, other))
+            def _bw():
+                self._accumulate(np.outer(out.grad, b))
+                other._accumulate(a.T @ out.grad)
+        elif a.ndim == 1 and b.ndim == 2:
+            out = Tensor(a @ b, (self, other))
+            def _bw():
+                self._accumulate(out.grad @ b.T)
+                other._accumulate(np.outer(a, out.grad))
+        else:
+            raise NotImplementedError("matmul gradients implemented for 1-D and 2-D only")
         out._backward = _bw
         return out
 

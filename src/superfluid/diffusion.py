@@ -49,21 +49,49 @@ def chebyshev_basis(L, lam, x, m):
     return Y
 
 
+def _bessel_i(s, m):
+    """Modified Bessel function I_k(s) for k = 0..m-1, power series.
+
+    I_k(s) = sum_j (s/2)^(2j+k) / (j! (j+k)!), updated along j by
+    term -> term * (s/2)^2 / (j * (j + k)). No scipy."""
+    out = np.zeros(m)
+    if s <= 0.0:
+        if m > 0:
+            out[0] = 1.0
+        return out
+    half = 0.5 * float(s)
+    fk = 1.0
+    t = np.empty(m)
+    for k in range(m):
+        if k > 0:
+            fk *= k
+        t[k] = (half ** k) / fk
+    total = t.copy()
+    q = half * half
+    ks = np.arange(m, dtype=float)
+    for j in range(1, 500):
+        t = t * q / (j * (j + ks))
+        total = total + t
+        if float(np.max(np.abs(t))) < 1e-18 * max(float(np.max(np.abs(total))), 1e-300):
+            break
+    return total
+
+
 def chebyshev_coefficients_exp(t, lam, m):
     """Coefficients of exp(-tL) in the Chebyshev basis of L~.
 
-    With s = t * lam / 2: exp(-tL) = e^{-s} sum_k (-s)^k / k! T_k(L~).
-    c_0 = e^{-s}; c_k = e^{-s} * 2 * (-s)^k / k! for k >= 1."""
+    With s = t * lam / 2: L = (lam/2)(L~ + I), so
+    exp(-tL) = e^{-s} exp(-s L~). The Chebyshev expansion of the
+    second factor uses modified Bessel functions:
+    exp(-s L~) = I_0(s) T_0 + 2 sum_{k>=1} (-1)^k I_k(s) T_k,
+    so c_0 = e^{-s} I_0(s) and c_k = e^{-s} 2 (-1)^k I_k(s) for k >= 1.
+    (A power series sum (-s)^k/k! is NOT a Chebyshev expansion - T_k
+    are not monomials - and it missed the spectrum by 2e-2.)"""
     s = 0.5 * float(t) * float(lam)
-    c = np.zeros(m)
-    if s <= 0.0:
-        c[0] = 1.0
-        return c
-    ks = np.arange(m)
-    log_fact = np.concatenate([[0.0], np.cumsum(np.log(np.arange(1, m)))])
-    c = np.exp(-s + ks * np.log(s) + np.log(2.0) - log_fact) * ((-1.0) ** ks)
-    c[0] = np.exp(-s)
-    return c
+    I = _bessel_i(s, m)
+    c = 2.0 * ((-1.0) ** np.arange(m)) * I
+    c[0] = I[0]
+    return c * np.exp(-s)
 
 
 def expm_multiply(L, t, x, degree=40, lam=None):
@@ -98,10 +126,18 @@ def band_filter_bank(L, lam, x, ts, degree=40):
 
 
 def spectral_gap(L):
-    """lambda_2: the smallest strictly positive eigenvalue."""
+    """lambda_2: the second-smallest eigenvalue of L.
+
+    Zero (up to round-off) exactly when the graph is disconnected:
+    the multiplicity of the 0 eigenvalue counts the components, so a
+    disconnected graph has lambda_2 = 0 and jams never."""
     w = np.sort(np.linalg.eigvalsh(L))
-    nz = w[w > 1e-10]
-    return float(nz[0]) if nz.size else 0.0
+    if w.size < 2:
+        return 0.0
+    lam2 = float(w[1])
+    if abs(lam2) < 1e-9:
+        return 0.0
+    return lam2
 
 
 def jam_time(L, tol=1e-3):
