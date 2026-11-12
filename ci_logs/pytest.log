@@ -1,4 +1,4 @@
-...............FF.F..FF                                                  [100%]
+...............F..F..FF                                                  [100%]
 =================================== FAILURES ===================================
 __________________ test_tensor_laplacian_grad_reaches_alphas ___________________
 
@@ -23,8 +23,8 @@ tests/test_sheaf_diffusion.py:64: in build
             ^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <superfluid.autodiff.Tensor object at 0x7dc69df6ba90>
-other = <superfluid.autodiff.Tensor object at 0x7dc69df6b610>
+self = <superfluid.autodiff.Tensor object at 0x7c6b9f91b690>
+other = <superfluid.autodiff.Tensor object at 0x7c6b9f91b110>
 
     def matmul(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -33,39 +33,6 @@ other = <superfluid.autodiff.Tensor object at 0x7dc69df6b610>
 E           NotImplementedError: matmul gradients implemented for 2-D only
 
 src/superfluid/autodiff.py:132: NotImplementedError
-_________________________ test_gershgorin_bounds_lmax __________________________
-
-    def test_gershgorin_bounds_lmax():
-        Lap = np.diag([2.0, 3.0, 5.0])
-        assert gershgorin_bound(Lap) == pytest.approx(5.0)
->       assert power_iteration_lmax(Lap) == pytest.approx(5.0, rel=1e-6)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-tests/test_sheaf_diffusion.py:72: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-L = array([[2., 0., 0.],
-       [0., 3., 0.],
-       [0., 0., 5.]]), iters = 300
-tol = 1e-13, seed = 0
-
-    def power_iteration_lmax(L, iters=300, tol=1e-13, seed=0):
-        """Reference lambda_max estimate via power iteration + Rayleigh quotient."""
-        v = np.random.default_rng(seed).normal(size=L.shape[0])
-        v /= np.linalg.norm(v)
-        lam = 0.0
-        for _ in range(iters):
-            w = L @ v
-            lam = float(v @ (L @ v))
-            nw = np.linalg.norm(w)
-            if nw < 1e-300:
-                return 0.0
-            v = w / nw
->           del lam_new
-                ^^^^^^^
-E           UnboundLocalError: cannot access local variable 'lam_new' where it is not associated with a value
-
-src/superfluid/diffusion.py:30: UnboundLocalError
 _____________________ test_expm_matches_eigendecomposition _____________________
 
     def test_expm_matches_eigendecomposition():
@@ -80,8 +47,8 @@ _____________________ test_expm_matches_eigendecomposition _____________________
             want = Q @ (np.exp(-t * w) * (Q.T @ x))
 >           assert np.allclose(got, want, atol=1e-10)
 E           assert False
-E            +  where False = <function allclose at 0x7dc6a3da3fb0>(array([-0.92581536, -0.63432485, -0.71844555,  0.2376517 , -0.27937707,\n        0.10668998,  0.6704605 ,  0.6798678 ]), array([-0.94121252, -0.63174748, -0.69718264,  0.23493493, -0.24743262,\n        0.10901371,  0.70199014,  0.71236041]), atol=1e-10)
-E            +    where <function allclose at 0x7dc6a3da3fb0> = np.allclose
+E            +  where False = <function allclose at 0x7c6ba7aac570>(array([-0.92581536, -0.63432485, -0.71844555,  0.2376517 , -0.27937707,\n        0.10668998,  0.6704605 ,  0.6798678 ]), array([-0.94121252, -0.63174748, -0.69718264,  0.23493493, -0.24743262,\n        0.10901371,  0.70199014,  0.71236041]), atol=1e-10)
+E            +    where <function allclose at 0x7c6ba7aac570> = np.allclose
 
 tests/test_sheaf_diffusion.py:101: AssertionError
 _____________________________ test_jam_time_bound ______________________________
@@ -121,11 +88,10 @@ E        +  where 2.0 = spectral_gap(array([[ 1., -1.,  0.,  0.,  0.,  0.,  0., 
 tests/test_sheaf_diffusion.py:161: AssertionError
 =========================== short test summary info ============================
 FAILED tests/test_sheaf_diffusion.py::test_tensor_laplacian_grad_reaches_alphas - NotImplementedError: matmul gradients implemented for 2-D only
-FAILED tests/test_sheaf_diffusion.py::test_gershgorin_bounds_lmax - UnboundLocalError: cannot access local variable 'lam_new' where it is not associated with a value
 FAILED tests/test_sheaf_diffusion.py::test_expm_matches_eigendecomposition - assert False
- +  where False = <function allclose at 0x7dc6a3da3fb0>(array([-0.92581536, -0.63432485, -0.71844555,  0.2376517 , -0.27937707,\n        0.10668998,  0.6704605 ,  0.6798678 ]), array([-0.94121252, -0.63174748, -0.69718264,  0.23493493, -0.24743262,\n        0.10901371,  0.70199014,  0.71236041]), atol=1e-10)
- +    where <function allclose at 0x7dc6a3da3fb0> = np.allclose
+ +  where False = <function allclose at 0x7c6ba7aac570>(array([-0.92581536, -0.63432485, -0.71844555,  0.2376517 , -0.27937707,\n        0.10668998,  0.6704605 ,  0.6798678 ]), array([-0.94121252, -0.63174748, -0.69718264,  0.23493493, -0.24743262,\n        0.10901371,  0.70199014,  0.71236041]), atol=1e-10)
+ +    where <function allclose at 0x7c6ba7aac570> = np.allclose
 FAILED tests/test_sheaf_diffusion.py::test_jam_time_bound - assert np.float64(0.5612050176137867) <= ((0.001 * np.float64(2.661610467541364)) + 1e-08)
 FAILED tests/test_sheaf_diffusion.py::test_spectral_gap_connected_vs_disconnected - assert 2.0 == 0.0
  +  where 2.0 = spectral_gap(array([[ 1., -1.,  0.,  0.,  0.,  0.,  0.,  0.],\n       [-1.,  1.,  0.,  0.,  0.,  0.,  0.,  0.],\n       [ 0.,  0.,  0... 0.,  0.,  0.,  0.],\n       [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],\n       [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.]]))
-5 failed, 18 passed in 0.16s
+4 failed, 19 passed in 0.22s
