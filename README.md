@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌊 Superfluid
+# 🌊 fluid-ARC
 
 ### Cellular-sheaf diffusion as an attention replacement
 
